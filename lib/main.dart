@@ -1,6 +1,3 @@
-@JS()
-library image_saver;
-
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -8,13 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:image/image.dart';
-import 'package:js/js.dart';
 
 import 'crop_editor_helper.dart';
 import 'image_saver.dart';
-
-@JS()
-external void _exportRaw(String key, Uint8List value);
 
 void main() {
   runApp(Home());
@@ -75,15 +68,78 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             _imageData == null
                 ? Text('')
-                : Container(
-                    width: width,
-                    height: height - 300,
-                    child: ExtendedImage.memory(
-                      _imageData!,
-                      extendedImageEditorKey: imageKey,
-                      mode: ExtendedImageMode.editor,
-                      fit: BoxFit.contain,
-                    ),
+                : Row(
+                    children: [
+                      Container(
+                        margin: EdgeInsets.all(20),
+                        width: width * 0.7,
+                        height: height - 300,
+                        child: ExtendedImage.memory(
+                          _imageData!,
+                          extendedImageEditorKey: imageKey,
+                          mode: ExtendedImageMode.editor,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 10,
+                      ),
+                      Container(
+                        width: width * 0.2,
+                        height: height - 300,
+                        child: Column(
+                          children: [
+                            Container(
+                              width: width * 0.2,
+                              child: TextField(
+                                  onChanged: (text) {},
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                      labelText: "Width(px)",
+                                      icon: Icon(Icons
+                                          .swap_horizontal_circle_outlined))),
+                            ),
+                            Container(
+                              width: width * 0.2,
+                              child: TextField(
+                                  onChanged: (text) {},
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                      labelText: "Height(px)",
+                                      icon: Icon(Icons
+                                          .swap_vertical_circle_outlined))),
+                            ),
+                            SizedBox(height: 20),
+                            Container(
+                              width: width * 0.15,
+                              child: ElevatedButton(
+                                  onPressed: () {
+                                    imageKey.currentState!.rotate(right: true);
+                                  },
+                                  child: Text('Rotate')),
+                            ),
+                            SizedBox(height: 20),
+                            Container(
+                              width: width * 0.15,
+                              child: ElevatedButton(
+                                  onPressed: () {
+                                    imageKey.currentState!.flip();
+                                  },
+                                  child: Text('Flip')),
+                            ),
+                            SizedBox(height: 20),
+                            Container(
+                              width: width * 0.15,
+                              child: ElevatedButton(
+                                  onPressed: () {
+                                    _cropImage();
+                                  },
+                                  child: Text('Download')),
+                            )
+                          ],
+                        ),
+                      )
+                    ],
                   ),
             SizedBox(height: 30),
             _imageData == null
@@ -152,10 +208,7 @@ class _MyHomePageState extends State<MyHomePage> {
       imageData = Uint8List.fromList(encodeJpg(newImage));
       //
 
-      final String? filePath =
-          await ImageSaver.save('extended_image_cropped_image.jpg', imageData!);
-
-      msg = 'save image : $filePath';
+      await ImageSaver.save('extended_image_cropped_image.jpg', imageData);
     } catch (e, stack) {
       msg = 'save failed: $e\n $stack';
       _cropping = false;
