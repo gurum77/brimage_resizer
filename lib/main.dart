@@ -29,16 +29,6 @@ class Home extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -99,12 +89,16 @@ class ImageResizer extends StatefulWidget {
       required this.imageHeight})
       : super(key: key) {
     ratio = imageWidth / imageHeight;
+    originSize = Size(imageWidth as double, imageHeight as double);
   }
 
   Uint8List? imageData;
   int imageWidth = 0;
   int imageHeight = 0;
   double ratio = 1;
+  bool lockedAspectRatio = true;
+  Size originSize = Size(0, 0);
+  Size presetSize = Size(0, 0);
 
   @override
   _ImageResizerState createState() => _ImageResizerState();
@@ -160,6 +154,12 @@ class _ImageResizerState extends State<ImageResizer> {
             extendedImageEditorKey: imageKey,
             mode: ExtendedImageMode.editor,
             fit: BoxFit.contain,
+            initEditorConfigHandler: (state) {
+              return EditorConfig(
+                  cropRectPadding: EdgeInsets.all(20),
+                  cornerColor: Colors.red,
+                  cropAspectRatio: widget.imageWidth / widget.imageHeight);
+            },
           ),
         ),
         SizedBox(
@@ -170,18 +170,40 @@ class _ImageResizerState extends State<ImageResizer> {
           height: MediaQuery.of(context).size.height - 300,
           child: Column(
             children: [
+              DropdownButton<Size>(
+                value: widget.presetSize,
+                isExpanded: true,
+                items: _getPresetItems(),
+                elevation: 16,
+                onChanged: (size) {
+                  setState(() {
+                    widget.imageWidth = size!.width as int;
+                    widget.imageHeight = size.height as int;
+                    if (widget.imageWidth == 0 || widget.imageHeight == 0) {
+                      widget.imageWidth = widget.originSize.width as int;
+                      widget.imageHeight = widget.originSize.height as int;
+                    }
+                    widget.ratio = widget.imageWidth / widget.imageHeight;
+                    widget.presetSize = size;
+                  });
+                },
+              ),
               Container(
                 width: MediaQuery.of(context).size.width * 0.2,
                 child: TextFormField(
-                  key: Key(widget.imageWidth.toString()),
+                    key: Key(widget.imageWidth.toString()),
                     onFieldSubmitted: (text) {
                       setState(() {
-                        // 폭을 변경하면 높이를 비율에 맞게 조정
-                        widget.imageWidth = int.parse(text.toString());
-                        double w = widget.imageWidth as double;
-                        double newHeight = w / widget.ratio;
-                        var nh = newHeight.floor();
-                        widget.imageHeight = nh;
+                        if (text != "") {
+                          // 폭을 변경하면 높이를 비율에 맞게 조정
+                          int newWidth = int.parse(text.toString());
+                          if (newWidth > 0) {
+                            widget.imageWidth = newWidth;
+                            if (widget.lockedAspectRatio) {
+                              _setImageHeightByRatio();
+                            }
+                          }
+                        }
                       });
                     },
                     keyboardType: TextInputType.number,
@@ -193,8 +215,22 @@ class _ImageResizerState extends State<ImageResizer> {
               Container(
                 width: MediaQuery.of(context).size.width * 0.2,
                 child: TextFormField(
-                  key: Key(widget.imageHeight.toString()),
-                    onChanged: (text) {},
+                    key: Key(widget.imageHeight.toString()),
+                    onFieldSubmitted: (text) {
+                      setState(() {
+                        if (text != "") {
+                          // 높이를 변경하면 폭을 비율에 맞게 조정
+                          int newHeight = int.parse(text.toString());
+                          if (newHeight > 0) {
+                            widget.imageHeight = newHeight;
+
+                            if (widget.lockedAspectRatio) {
+                              _setImageWidthByRatio();
+                            }
+                          }
+                        }
+                      });
+                    },
                     keyboardType: TextInputType.number,
                     initialValue: widget.imageHeight.toString(),
                     decoration: InputDecoration(
@@ -202,14 +238,30 @@ class _ImageResizerState extends State<ImageResizer> {
                         icon: Icon(Icons.swap_vertical_circle_outlined))),
               ),
               SizedBox(height: 20),
-              Container(
-                width: MediaQuery.of(context).size.width * 0.15,
-                child: ElevatedButton(
-                    onPressed: () {
-                      imageKey.currentState!.rotate(right: true);
-                    },
-                    child: Text('Rotate')),
+              Row(
+                children: [
+                  Checkbox(
+                      key: Key(widget.lockedAspectRatio.toString()),
+                      value: widget.lockedAspectRatio,
+                      onChanged: (checked) {
+                        setState(() {
+                          widget.lockedAspectRatio = checked!;
+                          if (widget.lockedAspectRatio)
+                            _setImageHeightByRatio();
+                        });
+                      }),
+                  Text('Lock Aspect Ratio', style: TextStyle(fontSize: 12))
+                ],
               ),
+              // SizedBox(height: 20),
+              // Container(
+              //   width: MediaQuery.of(context).size.width * 0.15,
+              //   child: ElevatedButton(
+              //       onPressed: () {
+              //         imageKey.currentState!.rotate(right: true);
+              //       },
+              //       child: Text('Rotate')),
+              // ),
               SizedBox(height: 20),
               Container(
                 width: MediaQuery.of(context).size.width * 0.15,
@@ -223,6 +275,9 @@ class _ImageResizerState extends State<ImageResizer> {
               Container(
                 width: MediaQuery.of(context).size.width * 0.15,
                 child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      primary: Colors.blue[900],
+                    ),
                     onPressed: () {
                       _cropImage();
                     },
@@ -233,5 +288,43 @@ class _ImageResizerState extends State<ImageResizer> {
         )
       ],
     );
+  }
+
+  void _setImageHeightByRatio() {
+    double w = widget.imageWidth as double;
+    double newHeight = w / widget.ratio;
+    var nh = newHeight.floor();
+    widget.imageHeight = nh;
+  }
+
+  void _setImageWidthByRatio() {
+    double h = widget.imageHeight as double;
+    double newWidth = h * widget.ratio;
+    var nw = newWidth.floor();
+    widget.imageWidth = nw;
+  }
+
+  List<DropdownMenuItem<Size>> _getPresetItems() {
+    List<DropdownMenuItem<Size>> items = [];
+    items.add(DropdownMenuItem<Size>(value: Size(0, 0), child: Text('Origin')));
+    items.add(DropdownMenuItem<Size>(
+        value: Size(512, 512), child: Text('Google 512x512')));
+    items.add(DropdownMenuItem<Size>(
+        value: Size(1024, 500), child: Text('Google 1024x500')));
+    items.add(DropdownMenuItem<Size>(
+        value: Size(568, 320), child: Text('Google 568x320(16:9)')));
+    items.add(DropdownMenuItem<Size>(
+        value: Size(3840, 2160), child: Text('Google 3840x2160(16:9)')));
+    items.add(DropdownMenuItem<Size>(
+        value: Size(320, 568), child: Text('Google 320x568(9:16)')));
+    items.add(DropdownMenuItem<Size>(
+        value: Size(2160, 3840), child: Text('Google 2160x3840(9:16)')));
+
+    items.add(DropdownMenuItem<Size>(
+        value: Size(315, 250), child: Text('Itch.io 315x250(Minimum)')));
+    items.add(DropdownMenuItem<Size>(
+        value: Size(630, 500), child: Text('Itch.io 630x500(Recommended)')));
+
+    return items;
   }
 }
