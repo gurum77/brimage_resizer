@@ -1,0 +1,66 @@
+{
+  "Instagram best fit": [
+    {
+      "name": "Profile photo",
+      "w": 320,
+      "h": 320
+    },
+    {
+      "name": "Feed photo(Landscape)",
+      "w": 1080,
+      "h": 566
+    },
+    {
+      "name": "Feed photo(Portrait)",
+      "w": 1080,
+      "h": 1350
+    },
+    {
+      "name": "Feed photo(square)",
+      "w": 1080,
+      "h": 1080
+    },
+    {
+      "name": "Stories",
+      "w": 1080,
+      "h": 1920
+    },
+    {
+      "name": "Thumbnails",
+      "w": 161,
+      "h": 161
+    },
+    {
+      "name": "Portrait",
+      "w": 1080,
+      "h": 1350
+    }
+  ],
+  "Twitter best fit": [
+    {
+      "name": "Profile photo",
+      "w": 400,
+      "h": 400
+    },
+    {
+      "name": "Header Photo",
+      "w": 1500,
+      "h": 500
+    },
+    {
+      "name": "In-Stram photo",
+      "w": 1600,
+      "h": 1900
+    },
+    {
+      "name": "card image",
+      "w": 1200,
+      "h": 1200
+    },
+    {
+      "name": "Fleets",
+      "w": 1080,
+      "h": 1920
+    }
+  ]
+}
