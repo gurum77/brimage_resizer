@@ -1,3 +1,4 @@
+import 'dart:html';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -48,33 +49,35 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Colors.green[300],
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            _imageData == null
-                ? Text('Select image file to resize.')
-                : ImageResizer(
-                    imageData: _imageData,
-                    imageWidth: _imageWidth,
-                    imageHeight: _imageHeight),
-            SizedBox(height: 30),
-            ElevatedButton(
-                onPressed: () {
-                  FilePicker.platform
-                      .pickFiles(type: FileType.image)
-                      .then((value) {
-                    if (value != null && value.files.length > 0) {
-                      setState(() {
-                        _imageData = value.files[0].bytes;
-                        var image = decodeImage(_imageData!);
-                        _imageWidth = image!.width;
-                        _imageHeight = image.height;
-                      });
-                    }
-                  });
-                },
-                child: Text("Select image file")),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              _imageData == null
+                  ? Text('Select image file to resize.')
+                  : ImageResizer(
+                      imageData: _imageData,
+                      imageWidth: _imageWidth,
+                      imageHeight: _imageHeight),
+              SizedBox(height: 30),
+              ElevatedButton(
+                  onPressed: () {
+                    FilePicker.platform
+                        .pickFiles(type: FileType.image)
+                        .then((value) {
+                      if (value != null && value.files.length > 0) {
+                        setState(() {
+                          _imageData = value.files[0].bytes;
+                          var image = decodeImage(_imageData!);
+                          _imageWidth = image!.width;
+                          _imageHeight = image.height;
+                        });
+                      }
+                    });
+                  },
+                  child: Text("Select image file")),
+            ],
+          ),
         ),
       ),
     );
@@ -90,6 +93,9 @@ class ImageResizer extends StatefulWidget {
       : super(key: key) {
     ratio = imageWidth / imageHeight;
     originSize = Size(imageWidth as double, imageHeight as double);
+
+    presets['Google play store'] = googlePlayStorePresets;
+    presets['Itch.io'] = itchIoPresets;
   }
 
   Uint8List? imageData;
@@ -99,6 +105,17 @@ class ImageResizer extends StatefulWidget {
   bool lockedAspectRatio = true;
   Size originSize = Size(0, 0);
   Size presetSize = Size(0, 0);
+  var googlePlayStorePresets = [
+    Size(512, 512),
+    Size(1024, 500),
+    Size(568, 320),
+    Size(3840, 2160),
+    Size(320, 568),
+    Size(2160, 3840)
+  ];
+  var itchIoPresets = [Size(315, 250), Size(630, 500)];
+  var presets = new Map<String, List>();
+  String selectedPresetName = 'Google play store';
 
   @override
   _ImageResizerState createState() => _ImageResizerState();
@@ -167,26 +184,42 @@ class _ImageResizerState extends State<ImageResizer> {
         ),
         Container(
           width: MediaQuery.of(context).size.width * 0.2,
-          height: MediaQuery.of(context).size.height - 300,
+          // height: MediaQuery.of(context).size.height - 300,
           child: Column(
             children: [
-              DropdownButton<Size>(
-                value: widget.presetSize,
+              DropdownButton<String>(
+                value: widget.selectedPresetName,
                 isExpanded: true,
-                items: _getPresetItems(),
+                items: _getPresetNameItems(),
                 elevation: 16,
-                onChanged: (size) {
+                onChanged: (presetName) {
                   setState(() {
-                    widget.imageWidth = size!.width as int;
-                    widget.imageHeight = size.height as int;
-                    if (widget.imageWidth == 0 || widget.imageHeight == 0) {
-                      widget.imageWidth = widget.originSize.width as int;
-                      widget.imageHeight = widget.originSize.height as int;
-                    }
-                    widget.ratio = widget.imageWidth / widget.imageHeight;
-                    widget.presetSize = size;
+                    widget.selectedPresetName = presetName.toString();
+                    // widget.imageWidth = size!.width as int;
+                    // widget.imageHeight = size.height as int;
+                    // if (widget.imageWidth == 0 || widget.imageHeight == 0) {
+                    //   widget.imageWidth = widget.originSize.width as int;
+                    //   widget.imageHeight = widget.originSize.height as int;
+                    // }
+                    // widget.ratio = widget.imageWidth / widget.imageHeight;
+                    // widget.presetSize = size;
                   });
                 },
+              ),
+              Container(
+                width: MediaQuery.of(context).size.width * 0.2,
+                height: 200,
+                child: ListView.builder(
+                    key: Key(widget.selectedPresetName),
+                    itemCount:
+                        widget.presets[widget.selectedPresetName]!.length,
+                    itemBuilder: (context, position) {
+                      print(widget.presets[widget.selectedPresetName]!.length
+                          .toString());
+                      return Text(widget.presets[widget.selectedPresetName]!
+                          .elementAt(position)
+                          .toString());
+                    }),
               ),
               Container(
                 width: MediaQuery.of(context).size.width * 0.2,
@@ -304,26 +337,12 @@ class _ImageResizerState extends State<ImageResizer> {
     widget.imageWidth = nw;
   }
 
-  List<DropdownMenuItem<Size>> _getPresetItems() {
-    List<DropdownMenuItem<Size>> items = [];
-    items.add(DropdownMenuItem<Size>(value: Size(0, 0), child: Text('Origin')));
-    items.add(DropdownMenuItem<Size>(
-        value: Size(512, 512), child: Text('Google 512x512')));
-    items.add(DropdownMenuItem<Size>(
-        value: Size(1024, 500), child: Text('Google 1024x500')));
-    items.add(DropdownMenuItem<Size>(
-        value: Size(568, 320), child: Text('Google 568x320(16:9)')));
-    items.add(DropdownMenuItem<Size>(
-        value: Size(3840, 2160), child: Text('Google 3840x2160(16:9)')));
-    items.add(DropdownMenuItem<Size>(
-        value: Size(320, 568), child: Text('Google 320x568(9:16)')));
-    items.add(DropdownMenuItem<Size>(
-        value: Size(2160, 3840), child: Text('Google 2160x3840(9:16)')));
-
-    items.add(DropdownMenuItem<Size>(
-        value: Size(315, 250), child: Text('Itch.io 315x250(Minimum)')));
-    items.add(DropdownMenuItem<Size>(
-        value: Size(630, 500), child: Text('Itch.io 630x500(Recommended)')));
+  List<DropdownMenuItem<String>> _getPresetNameItems() {
+    List<DropdownMenuItem<String>> items = [];
+    for (var presetName in widget.presets.keys) {
+      items.add(
+          DropdownMenuItem<String>(value: presetName, child: Text(presetName)));
+    }
 
     return items;
   }
